@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Model Comparison | ShopSmart Analytics{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="container">
+    <p class="eyebrow">MODEL OVERVIEW</p>
+    <h1>Compare tasks—not unlike scores.</h1>
+    <p>Each model addresses a different retail question using its own synthetic dataset and held-out test split.</p>
+  </div>
+</section>
+
+<section class="section-space">
+  <div class="container">
+    <div class="comparison-notice mb-4">
+      <strong>Important:</strong> Linear Regression is a regression task and is measured with MAE, RMSE, and R².
+      The other algorithms are classification tasks and use accuracy, weighted precision, recall, and F1.
+      These metrics measure different things and must not be ranked across unrelated tasks or datasets.
+    </div>
+    <div class="table-responsive">
+      <table class="table table-striped align-middle comparison-table">
+        <thead><tr><th scope="col">Algorithm</th><th scope="col">Task</th><th scope="col">Dataset</th><th scope="col">Target</th><th scope="col">Current held-out metrics</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {% for algorithm in algorithms %}
+          <tr>
+            <th scope="row">
+              <a href="{% if algorithm.slug == 'linear-regression' %}{{ url_for('linear_regression') }}{% else %}{{ url_for('model_page', slug=algorithm.slug) }}{% endif %}">{{ algorithm.name }}</a>
+              <span class="d-block comparison-business">{{ algorithm.business_problem }}</span>
+            </th>
+            <td>{{ algorithm.task_type }}</td>
+            <td><code>{{ algorithm.dataset }}</code></td>
+            <td><code>{{ algorithm.target }}</code></td>
+            <td>
+              {% if algorithm.metrics %}
+                {% for name, value in algorithm.metrics.items() %}
+                <span class="metric-chip">{{ name|upper }} {% if algorithm.task_type == "Regression" %}{{ "%.2f"|format(value) }}{% else %}{{ "%.3f"|format(value) }}{% endif %}</span>
+                {% endfor %}
+              {% else %}
+                <span class="metric-note">No metrics: model unavailable.</span>
+              {% endif %}
+            </td>
+            <td><span class="status-badge{% if algorithm.status == 'Ready' %} status-ready{% endif %}">{{ algorithm.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="metric-note">Metrics are calculated from each model's held-out synthetic test split. Their values are useful within their task only; they do not prove commercial usefulness or production readiness.</p>
+  </div>
+</section>
+{% endblock %}

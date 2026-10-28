@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Home | ShopSmart Analytics{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+  <div class="container hero-content">
+    <p class="eyebrow">RETAIL INSIGHTS, MADE UNDERSTANDABLE</p>
+    <h1>Better retail decisions start with <span>better questions.</span></h1>
+    <p class="hero-copy">
+      Explore how six core machine learning algorithms can help retailers understand
+      sales, customer feedback, purchasing patterns, and retention.
+    </p>
+    <a class="btn btn-primary btn-lg" href="#models">Explore the models</a>
+    <p class="fictional-note">A fictional company and educational demonstration.</p>
+  </div>
+</section>
+
+<section class="section-space" aria-labelledby="purpose-heading">
+  <div class="container">
+    <div class="section-heading">
+      <p class="eyebrow">OUR PURPOSE</p>
+      <h2 id="purpose-heading">Practical insights for modern retail</h2>
+      <p>ShopSmart Analytics explores ways data can inform everyday business decisions.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <article class="info-card h-100">
+          <span class="card-kicker">MISSION</span>
+          <h3>Make data useful</h3>
+          <p>Help retail businesses make better decisions through accessible, data-driven insights.</p>
+        </article>
+      </div>
+      <div class="col-md-6">
+        <article class="info-card h-100">
+          <span class="card-kicker">VISION</span>
+          <h3>Build understanding</h3>
+          <p>Become a trusted provider of practical and understandable machine learning solutions for modern retailers.</p>
+        </article>
+      </div>
+    </div>
+    <div class="objectives-panel mt-4">
+      <h3>Our operational objectives</h3>
+      <ul class="objective-list">
+        <li>Forecast product sales to support planning.</li>
+        <li>Classify customer feedback to surface service themes.</li>
+        <li>Identify customers with similar purchasing patterns.</li>
+        <li>Estimate purchase intent and highlight potential churn risk.</li>
+        <li>Demonstrate neural-network prediction for retail activity.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section-space models-section" id="models" aria-labelledby="models-heading">
+  <div class="container">
+    <div class="section-heading">
+      <p class="eyebrow">THE MACHINE LEARNING LAB</p>
+      <h2 id="models-heading">Six algorithms. Six business questions.</h2>
+      <p>Explore six trained demonstrations. Each result uses its own task and synthetic dataset; scores across different tasks should not be ranked against one another.</p>
+    </div>
+    <div class="row g-4">
+      {% for algorithm in algorithms %}
+      <div class="col-md-6 col-lg-4">
+        <article class="model-card h-100">
+          <div class="d-flex justify-content-between align-items-start gap-3">
+            <span class="model-number">0{{ loop.index }}</span>
+            <span class="status-badge{% if algorithm.status == 'Ready' %} status-ready{% endif %}">{{ algorithm.status }}</span>
+          </div>
+          <h3>{{ algorithm.name }}</h3>
+          <p>{{ algorithm.business_problem }}</p>
+          <a class="model-link" href="{% if algorithm.slug == 'linear-regression' %}{{ url_for('linear_regression') }}{% else %}{{ url_for('model_page', slug=algorithm.slug) }}{% endif %}">
+            Open model lab <span aria-hidden="true">→</span>
+          </a>
+        </article>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="comparison-link-wrap"><a class="model-link" href="{{ url_for('comparison') }}">Compare tasks and evaluation metrics <span aria-hidden="true">→</span></a></p>
+  </div>
+</section>
+
+<section class="closing-banner">
+  <div class="container">
+    <p class="eyebrow">LEARN BY EXPLORING</p>
+    <h2>Machine learning is a tool—not a substitute for good judgment.</h2>
+    <p>Every result in the completed project will be explained with its dataset, evaluation method, and limitations.</p>
+    <a href="{{ url_for('about') }}" class="btn btn-outline-light">About the company</a>
+  </div>
+</section>
+{% endblock %}

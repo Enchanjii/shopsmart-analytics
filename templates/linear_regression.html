@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Sales Forecast | ShopSmart Analytics{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="container">
+    <p class="eyebrow">MACHINE LEARNING LAB · MODEL 01</p>
+    <h1>Linear Regression: sales forecasting</h1>
+    <p>Estimate sales amount from retail activity. The data and model are synthetic educational examples, not production evidence.</p>
+  </div>
+</section>
+
+<section class="section-space">
+  <div class="container">
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7">
+        <article class="info-card h-100">
+          <span class="card-kicker">BUSINESS QUESTION</span>
+          <h2>How might sales change with store conditions?</h2>
+          <p>Linear Regression estimates a continuous value by fitting a linearly weighted combination of the input features. Retail teams could use such a forecast as one input to sales and inventory planning.</p>
+          <p><strong>Why this model?</strong> Sales amount is a numeric target, and a linear model is a clear baseline whose feature relationships can be inspected and explained.</p>
+          <p><strong>Why this data?</strong> Advertising, price, discounts, traffic, prior sales, and calendar indicators are plausible planning signals a retailer could collect. The generated sales target makes this a supervised regression task, but the formula is simplified and does not establish real business relationships.</p>
+          <p><strong>Limitations:</strong> The generated data follows a simplified formula. Real sales can involve nonlinear patterns, changing customer behavior, external events, and measurement errors. A feature relationship is not proof of cause.</p>
+        </article>
+      </div>
+      <div class="col-lg-5">
+        <article class="metrics-card h-100">
+          <span class="card-kicker">HELD-OUT TEST RESULTS</span>
+          <p class="metric-note">Model fitted using {{ model_result.train_size }} training records and evaluated on {{ model_result.test_size }} separate test records out of {{ model_result.dataset_size }}.</p>
+          <dl class="metric-list">
+            <div><dt>MAE</dt><dd>${{ "{:,.2f}".format(model_result.metrics.mae) }}</dd></div>
+            <div><dt>RMSE</dt><dd>${{ "{:,.2f}".format(model_result.metrics.rmse) }}</dd></div>
+            <div><dt>R²</dt><dd>{{ "{:.3f}".format(model_result.metrics.r2) }}</dd></div>
+          </dl>
+          <p class="metric-note">MAE is the average absolute error; RMSE penalizes larger errors more; R² describes fit relative to predicting the test-set mean. These scores describe only this synthetic test split.</p>
+          <p class="result-interpretation">
+            On these held-out synthetic records, predictions differ from actual sales by
+            <strong>${{ "{:,.2f}".format(model_result.metrics.mae) }}</strong> on average in absolute terms.
+            The R² value is <strong>{{ "{:.1%}".format(model_result.metrics.r2) }}</strong>
+            {% if model_result.metrics.r2 >= 0 %}of variation accounted for relative to the test-set mean on this split.{% else %}and is below the test-set-mean baseline on this split.{% endif %}
+            It is not a real-world accuracy guarantee.
+          </p>
+        </article>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <article class="info-card">
+          <span class="card-kicker">INTERACTIVE FORECAST</span>
+          <h2>Try a retail scenario</h2>
+          <p>Enter a hypothetical scenario within the supported ranges. All fields are required.</p>
+          <form id="sales-prediction-form" class="prediction-form" novalidate>
+            <div class="row g-3">
+              {% for feature in feature_columns %}
+              <div class="col-md-6">
+                <label class="form-label" for="{{ feature }}">{{ feature.replace("_", " ")|title }}</label>
+                {% if feature in ("weekend", "holiday_season") %}
+                <select class="form-select" id="{{ feature }}" name="{{ feature }}" required>
+                  <option value="0" selected>No (0)</option>
+                  <option value="1">Yes (1)</option>
+                </select>
+                {% else %}
+                <input class="form-control" id="{{ feature }}" name="{{ feature }}" type="number"
+                       min="{{ feature_limits[feature][0] }}"
+                       max="{{ feature_limits[feature][1] }}"
+                       step="any" required
+                       value="{{ {'advertising_spend': 450, 'product_price': 65, 'discount_percent': 10, 'store_traffic': 340, 'previous_sales': 4200}[feature] }}">
+                {% endif %}
+                <div class="form-text">
+                  {{ feature_descriptions[feature] }}
+                  {% if feature in ("weekend", "holiday_season") %}
+                  · Values: 0 or 1
+                  {% else %}
+                  · Accepted range: {{ feature_limits[feature][0] }}–{{ feature_limits[feature][1] }}
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            <button class="btn btn-primary mt-4" type="submit">Estimate sales</button>
+            <span class="request-status ms-2" id="prediction-status" role="status" aria-live="polite"></span>
+          </form>
+          <div class="prediction-result mt-4" id="prediction-result" hidden aria-live="polite"></div>
+        </article>
+      </div>
+      <div class="col-lg-5">
+        <article class="info-card h-100">
+          <span class="card-kicker">MODEL EVALUATION</span>
+          <h2>Actual vs. predicted</h2>
+          <p>Each point compares one held-out test record's actual sales with the model's prediction. A closer fit to the diagonal indicates smaller prediction errors.</p>
+          <div class="chart-container">
+            <canvas id="sales-evaluation-chart" aria-label="Scatter plot of actual and predicted sales on the held-out test set" role="img"></canvas>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <article class="info-card mt-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <span class="card-kicker">DATASET</span>
+          <h2>Synthetic retail sales data</h2>
+          <p>{{ model_result.dataset_size }} generated records · target: <code>{{ target_column }}</code> (sales amount in USD).</p>
+        </div>
+        <span class="synthetic-badge">Synthetic · generated with a fixed seed</span>
+      </div>
+      <p>The features below describe example retail conditions. No real customer or business records are used. The target is computed from a documented formula with random noise, so strong results here should not be interpreted as real-world accuracy. The CSV is generated by <code>scripts/generate_sales_dataset.py</code> using a fixed random seed.</p>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <caption class="visually-hidden">Dataset columns, types, and meanings</caption>
+          <thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Meaning</th></tr></thead>
+          <tbody>
+            {% for feature in feature_columns %}
+            <tr><th scope="row"><code>{{ feature }}</code></th><td>{{ feature_types[feature] }}</td><td>{{ feature_descriptions[feature] }}</td></tr>
+            {% endfor %}
+            <tr><th scope="row"><code>{{ target_column }}</code></th><td>Numeric target</td><td>Generated sales amount in USD</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3 class="sample-heading">Sample records</h3>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <caption class="visually-hidden">First five synthetic dataset records</caption>
+          <thead><tr>{% for column in feature_columns %}<th scope="col">{{ column.replace("_", " ") }}</th>{% endfor %}<th scope="col">{{ target_column.replace("_", " ") }}</th></tr></thead>
+          <tbody>
+            {% for row in model_result.dataset_preview %}
+            <tr>{% for column in feature_columns %}<td>{{ row[column] }}</td>{% endfor %}<td>{{ row[target_column] }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="metric-note mb-0">Dataset checks: {{ model_result.dataset_size }} rows loaded, no missing values, no duplicates, and numeric features validated against expected ranges before training.</p>
+    </article>
+  </div>
+</section>
+
+<script id="evaluation-data" type="application/json">{{ {
+  "actual": model_result.test_actual,
+  "predicted": model_result.test_predicted
+}|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/linear-regression.js') }}" defer></script>
+{% endblock %}

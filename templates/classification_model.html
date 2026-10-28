@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ config.name }} | ShopSmart Analytics{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="container">
+    <p class="eyebrow">MACHINE LEARNING LAB · {{ config.name|upper }}</p>
+    <h1>{{ config.name }}</h1>
+    <p>{{ config.business_problem }}</p>
+  </div>
+</section>
+
+<section class="section-space">
+  <div class="container">
+    <div class="row g-4 mb-4">
+      <div class="col-lg-7">
+        <article class="info-card h-100">
+          <span class="card-kicker">BUSINESS PROBLEM AND MODEL CHOICE</span>
+          <h2>How this model supports retail analysis</h2>
+          <p>{{ config.business_problem }}</p>
+          <p><strong>Why this algorithm?</strong> {{ config.why_model }}</p>
+          {% if config.slug == "naive-bayes" %}
+          <p><strong>Text-data caveat:</strong> The generated reviews use clear sentiment wording and are easier to classify than ambiguous real customer feedback.</p>
+          {% elif config.slug == "neural-network" %}
+          <p><strong>Network:</strong> A feedforward classifier with {{ config.hidden_layers[0] }} and {{ config.hidden_layers[1] }} hidden units, ReLU activation, and a purchase/no-purchase output. Early stopping uses a validation slice of training data.</p>
+          {% endif %}
+          {% if config.slug == "decision-tree" %}
+          <p>A churn-risk prediction can help prioritize a human-reviewed retention check-in. The model describes synthetic associations; it does not identify causes or establish why a customer might leave.</p>
+          {% elif config.slug == "svm" or config.slug == "neural-network" %}
+          <p>Purchase predictions may help teams evaluate broad campaign or user-experience ideas. A model score is not certainty, and should not be used to pressure or exclude individual customers.</p>
+          {% elif config.slug == "knn" %}
+          <p>Similar synthetic profiles can inform broad customer segments or product recommendations. Similarity is defined by the selected numeric features and their scaling, not by a complete view of a person.</p>
+          {% else %}
+          <p>Aggregated feedback themes can help teams investigate recurring service or product issues. Automated sentiment is a signal for review, not a substitute for reading customer context.</p>
+          {% endif %}
+          <p class="metric-note">Data source: {{ config.data_source }}</p>
+        </article>
+      </div>
+      <div class="col-lg-5">
+        <article class="metrics-card h-100">
+          <span class="card-kicker">HELD-OUT TEST RESULTS</span>
+          <p class="metric-note">{{ model_result.train_size }} training records and {{ model_result.test_size }} held-out test records from {{ model_result.dataset_size }} generated records.</p>
+          <dl class="metric-list">
+            <div><dt>Accuracy</dt><dd>{{ "%.1f%%"|format(model_result.metrics.accuracy * 100) }}</dd></div>
+            <div><dt>Precision*</dt><dd>{{ "%.1f%%"|format(model_result.metrics.precision * 100) }}</dd></div>
+            <div><dt>Recall*</dt><dd>{{ "%.1f%%"|format(model_result.metrics.recall * 100) }}</dd></div>
+            <div><dt>F1*</dt><dd>{{ "%.1f%%"|format(model_result.metrics.f1 * 100) }}</dd></div>
+          </dl>
+          <p class="metric-note">*Weighted across the target classes. These held-out metrics describe only this synthetic dataset and split. Accuracy is the share of test predictions that matched their labels; precision/recall/F1 summarize class-specific error trade-offs.</p>
+          <p class="metric-note">For context, always-majority-class baseline accuracy (majority chosen from training data) on this same test split was {{ "%.1f%%"|format(model_result.majority_baseline_accuracy * 100) }}.</p>
+          <p class="result-interpretation">
+            {% if model_result.metrics.accuracy > model_result.majority_baseline_accuracy %}
+            On this test split, accuracy exceeded the simple majority baseline; this is only an educational synthetic-data result.
+            {% else %}
+            On this test split, accuracy did not exceed the simple majority baseline, so these results do not show improvement over always selecting the most frequent training class.
+            {% endif %}
+          </p>
+          <p class="result-interpretation">Use these scores to understand this classroom example's behavior, not as evidence of production performance or a direct comparison with a different task or dataset.</p>
+        </article>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <article class="info-card h-100">
+          <span class="card-kicker">INTERACTIVE PREDICTION</span>
+          <h2>Try a synthetic example</h2>
+          <p>Submit a hypothetical review or customer/session profile to the trained model.</p>
+          <form class="prediction-form classification-form" data-model-slug="{{ config.slug }}">
+            <div class="row g-3">
+              {% for field in config.fields %}
+              <div class="col-md-{% if field.type == 'textarea' %}12{% else %}6{% endif %}">
+                <label class="form-label" for="{{ config.slug }}-{{ field.name }}">{{ field.label }}</label>
+                {% if field.type == "textarea" %}
+                <textarea class="form-control" id="{{ config.slug }}-{{ field.name }}"
+                          name="{{ field.name }}" rows="4" maxlength="5000" required></textarea>
+                {% elif field.type == "select" %}
+                <select class="form-select" id="{{ config.slug }}-{{ field.name }}" name="{{ field.name }}" required>
+                  {% for value, label in field.options %}
+                  <option value="{{ value }}">{{ label }} ({{ value }})</option>
+                  {% endfor %}
+                </select>
+                {% else %}
+                <input class="form-control" id="{{ config.slug }}-{{ field.name }}"
+                       name="{{ field.name }}" type="number" min="{{ field.min }}"
+                       max="{{ field.max }}" step="{{ field.step }}" required>
+                {% endif %}
+                {% if field.name in config.feature_descriptions %}
+                <div class="form-text">{{ config.feature_descriptions[field.name] }}</div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <button class="btn btn-primary mt-4" type="submit">Run {{ config.name }} prediction</button>
+            <span class="request-status ms-2" role="status" aria-live="polite"></span>
+            <div class="prediction-result mt-4" hidden aria-live="polite"></div>
+          </form>
+          {% if config.slug == "knn" %}
+          <div class="table-responsive mt-4" hidden id="neighbors-{{ config.slug }}">
+            <h3 class="sample-heading">Nearest synthetic training profiles</h3>
+            <table class="table table-sm table-striped align-middle">
+              <thead><tr>{% for field in config.features %}<th scope="col">{{ field.replace("_", " ") }}</th>{% endfor %}<th scope="col">Category</th><th scope="col">Scaled distance</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          {% endif %}
+        </article>
+      </div>
+      <div class="col-lg-5">
+        <article class="info-card h-100">
+          <span class="card-kicker">MODEL EVALUATION</span>
+          <h2>Held-out confusion matrix</h2>
+          <p>Rows are actual classes; columns are model predictions. The diagonal counts correct test predictions.</p>
+          <div class="chart-container chart-container-short">
+            <canvas id="confusion-chart-{{ config.slug }}" role="img"
+                    aria-label="Confusion matrix for {{ config.name }} held-out test results"></canvas>
+          </div>
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-bordered align-middle">
+              <caption>Confusion matrix: rows are actual class; columns are predicted class.</caption>
+              <thead>
+                <tr><th scope="col">Actual ↓ / Predicted →</th>
+                  {% for label in model_result.labels %}<th scope="col">{{ label.replace("_", " ") }}</th>{% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row_index in range(model_result.labels|length) %}
+                <tr><th scope="row">{{ model_result.labels[row_index].replace("_", " ") }}</th>
+                  {% for column_index in range(model_result.labels|length) %}
+                  <td>{{ model_result.confusion_matrix[row_index][column_index] }}</td>
+                  {% endfor %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% if config.slug == "neural-network" %}
+          <h3 class="sample-heading">Training history</h3>
+          <p class="metric-note">Training loss and validation accuracy are shown separately. Validation records are drawn only from the training split; the held-out test set remains separate.</p>
+          <div class="chart-container chart-container-short">
+            <canvas id="loss-chart-{{ config.slug }}" role="img"
+                    aria-label="Neural network training loss by epoch"></canvas>
+          </div>
+          <div class="chart-container chart-container-short mt-3">
+            <canvas id="validation-chart-{{ config.slug }}" role="img"
+                    aria-label="Neural network validation accuracy by epoch"></canvas>
+          </div>
+          {% endif %}
+          {% if config.slug == "decision-tree" %}
+          <h3 class="sample-heading">Learned decision rules (maximum depth {{ config.max_depth }})</h3>
+          <pre class="tree-rules">{{ model_result.decision_rules }}</pre>
+          {% endif %}
+        </article>
+      </div>
+    </div>
+
+    <article class="info-card mt-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <span class="card-kicker">SYNTHETIC DATASET</span>
+          <h2>{{ config.dataset }}</h2>
+          <p>{{ model_result.dataset_size }} records · target <code>{{ config.target }}</code>: {{ config.target_description }}</p>
+        </div>
+        <span class="synthetic-badge">Synthetic · fixed random seed</span>
+      </div>
+      <p>{{ config.data_source }} These sample data do not represent real people or commercial performance.</p>
+      <div class="feature-descriptions">
+        {% for feature in config.features %}
+        <p><code>{{ feature }}</code> ({{ model_result.feature_types[feature] }}): {{ config.feature_descriptions[feature] }}</p>
+        {% endfor %}
+      </div>
+      <p class="metric-note">Class counts in the full dataset: {% for label, count in model_result.class_distribution.items() %}{{ label }} {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}. Dataset checks found {{ model_result.missing_values }} missing values and {{ model_result.duplicate_records }} duplicate records.</p>
+      <h3 class="sample-heading">Sample records</h3>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+          <caption class="visually-hidden">First five synthetic records from {{ config.dataset }}</caption>
+          <thead><tr>{% for column in config.features %}<th scope="col">{{ column.replace("_", " ") }}</th>{% endfor %}<th scope="col">{{ config.target.replace("_", " ") }}</th></tr></thead>
+          <tbody>{% for row in model_result.dataset_preview %}<tr>{% for column in config.features %}<td>{{ row[column] }}</td>{% endfor %}<td>{{ row[config.target] }}</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script id="classification-data-{{ config.slug }}" type="application/json">{{ {
+  "labels": model_result.labels,
+  "matrix": model_result.confusion_matrix,
+  "target": config.target,
+  "features": config.features,
+  "history": model_result.training_history|default({})
+}|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/classification.js') }}" defer></script>
+{% endblock %}

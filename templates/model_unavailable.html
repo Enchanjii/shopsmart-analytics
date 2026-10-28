@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ algorithm.name }} unavailable | ShopSmart Analytics{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div class="container">
+    <p class="eyebrow">MODEL STATUS</p>
+    <h1>{{ algorithm.name }} is unavailable</h1>
+    <p>The application could not initialize this model. No prediction or evaluation result is being shown.</p>
+    {% if error %}<p class="metric-note">Initialization detail: {{ error }}</p>{% endif %}
+    <a class="btn btn-primary" href="{{ url_for('home') }}">Return to model overview</a>
+  </div>
+</section>
+{% endblock %}
